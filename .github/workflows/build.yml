@@ -1,48 +1,58 @@
-name: build
+name: Build APK
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Java
+
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-          
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.3'
           channel: 'stable'
-          
-      - name: Fix Kotlin Duplicate Classes Error
+
+      - name: Fix Missing Android Folder + Kotlin Duplicate
         run: |
-          echo "Fixing kotlin version..."
-          sed -i "s/ext.kotlin_version = '.*'/ext.kotlin_version = '1.9.10'/" android/build.gradle
-          
-          echo "Adding kotlin-bom..."
-          # android/app/build.gradle में bom add करो अगर नहीं है
-          if ! grep -q "kotlin-bom" android/app/build.gradle; then
-            sed -i "/^dependencies {/a \    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.10')" android/app/build.gradle
+          echo "Checking android folder..."
+          if [ ! -f "android/build.gradle" ]; then
+            echo "android folder missing - recreating it"
+            flutter create . --platforms=android
           fi
           
-          echo "Fix done - checking..."
-          cat android/build.gradle | grep kotlin_version
+          echo "Fixing Kotlin version to 1.9.22..."
+          sed -i "s/ext.kotlin_version = '.*'/ext.kotlin_version = '1.9.22'/" android/build.gradle || true
           
-      - name: Install Dependencies
+          echo "Adding Kotlin BOM and exclusions..."
+          # BOM add
+          if [ -f "android/app/build.gradle" ]; then
+            if ! grep -q "kotlin-bom" android/app/build.gradle; then
+              sed -i "/dependencies {/a \    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.22')" android/app/build.gradle
+            fi
+            # Duplicate class fix
+            if ! grep -q "exclude group" android/app/build.gradle; then
+              sed -i "/^android {/i configurations {\n    implementation {\n        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'\n        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'\n    }\n}\n" android/app/build.gradle
+            fi
+          fi
+          
+          echo "Fix Done"
+          ls android/
+
+      - name: Get Packages
         run: flutter pub get
-        
-      - name: Generate Icons
-        run: flutter pub run flutter_launcher_icons
-        
-      - name: Build APK
+
+      - name: Build APK Release
         run: flutter build apk --release
-        
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: Fatiha-Urs-App
           path: build/app/outputs/flutter-apk/app-release.apk
