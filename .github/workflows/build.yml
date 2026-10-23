@@ -1,44 +1,42 @@
-name: Build Fatiha Urs APK
-on:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
+name: build
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
           
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.22.3'
           channel: 'stable'
           
-      - name: Fix Android Folder
+      - name: Fix Kotlin Duplicate Classes Error
         run: |
-          echo "Backing up our files..."
-          cp lib/main.dart /tmp/main.dart.bak
-          cp pubspec.yaml /tmp/pubspec.yaml.bak
-          if [ ! -f "android/build.gradle" ]; then
-            echo "Fixing android folder..."
-            rm -rf android
-            flutter create --project-name fatiha_urs_reminder . --platforms=android --org com.fatiha.urs
-          fi
-          echo "Restoring our files..."
-          cp /tmp/main.dart.bak lib/main.dart
-          cp /tmp/pubspec.yaml.bak pubspec.yaml
+          echo "Fixing kotlin version..."
+          sed -i "s/ext.kotlin_version = '.*'/ext.kotlin_version = '1.9.10'/" android/build.gradle
           
-      - name: Get Dependencies
+          echo "Adding kotlin-bom..."
+          # android/app/build.gradle में bom add करो अगर नहीं है
+          if ! grep -q "kotlin-bom" android/app/build.gradle; then
+            sed -i "/^dependencies {/a \    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.10')" android/app/build.gradle
+          fi
+          
+          echo "Fix done - checking..."
+          cat android/build.gradle | grep kotlin_version
+          
+      - name: Install Dependencies
         run: flutter pub get
+        
+      - name: Generate Icons
+        run: flutter pub run flutter_launcher_icons
         
       - name: Build APK
         run: flutter build apk --release
@@ -46,5 +44,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: fatiha-urs-reminder-apk
+          name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
