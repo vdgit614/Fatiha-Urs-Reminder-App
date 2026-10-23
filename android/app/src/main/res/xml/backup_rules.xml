@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- हमारी Fatiha/Urs की पूरी List का Backup Google Drive पर होगा -->
+    <include domain="sharedpref" path="." />
+    <include domain="database" path="." />
+    <include domain="file" path="." />
+    <include domain="external" path="." />
+    
+    <!-- Device की Cache नहीं लेनी -->
+    <exclude domain="external" path="." />
+</full-backup-content>
