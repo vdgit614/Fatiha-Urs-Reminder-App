@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- User का नया Mobile पर Data Restore होगा -->
+        <include domain="sharedpref" path="." />
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="." />
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+    </device-transfer>
+</data-extraction-rules>
