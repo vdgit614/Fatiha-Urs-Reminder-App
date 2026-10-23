@@ -1,0 +1,16 @@
+name: fatiha_urs_reminder
+description: Fatiha Urs Reminder App with Azan Notification
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^17.1.2
+  timezone: ^0.9.4
+  permission_handler: ^11.3.1
+  shared_preferences: ^2.2.3
+  cupertino_icons: ^1.0.8
+flutter:
+  uses-material-design: true
