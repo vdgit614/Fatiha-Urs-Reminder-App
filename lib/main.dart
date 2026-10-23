@@ -31,7 +31,8 @@ class FullArchClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
-  @override bool shouldReclip(covariant CustomClipper<Path> old) => false;
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> old) => false;
 }
 
 class FullArchPainter extends CustomPainter {
@@ -48,12 +49,19 @@ class FullArchPainter extends CustomPainter {
     path.cubicTo(0, h * 0.18, w * 0.35, h * 0.08, w / 2, 0);
     path.close();
     canvas.drawShadow(path, Colors.black26, 10, true);
-    Paint fill = Paint()..color = Colors.white..style = PaintingStyle.fill;
-    Paint border = Paint()..color = Color(0xFF0F4D24)..style = PaintingStyle.stroke..strokeWidth = 12..strokeJoin = StrokeJoin.round;
+    Paint fill = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    Paint border = Paint()
+      ..color = Color(0xFF0F4D24)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12
+      ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, fill);
     canvas.drawPath(path, border);
   }
-  @override bool shouldRepaint(covariant CustomPainter old) => false;
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
 class HomeScreen extends StatefulWidget {
@@ -68,18 +76,22 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     loadReminders();
-    _requestPerm();
+    requestPerm();
   }
 
-  Future<void> _requestPerm() async {
-    await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+  Future<void> requestPerm() async {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
   }
 
   Future<void> loadReminders() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? data = prefs.getString('reminders');
     if (data != null) {
-      setState(() { reminders = List<Map<String, dynamic>>.from(json.decode(data)); });
+      setState(() {
+        reminders = List<Map<String, dynamic>>.from(json.decode(data));
+      });
     }
   }
 
@@ -90,9 +102,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> scheduleNotif(int id, String title, DateTime dt) async {
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      id, 'Fatiha Urs Reminder', '$title - आज फातिहा / उर्स है',
+      id,
+      'Fatiha Urs Reminder',
+      '$title - आज है',
       tz.TZDateTime.from(dt, tz.local),
-      const NotificationDetails(android: AndroidNotificationDetails('fatiha_urs_channel','Fatiha Urs', importance: Importance.max, priority: Priority.high)),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'fatiha_urs_channel',
+          'Fatiha Urs',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
@@ -100,35 +121,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> addDialog(String type) async {
     TextEditingController ctrl = TextEditingController();
-    await showDialog(context: context, builder: (c) => AlertDialog(
-      title: Text('$type का नाम'),
-      content: TextField(controller: ctrl, decoration: InputDecoration(hintText: 'जैसे: दादा जान का $type')),
-      actions: [
-        TextButton(onPressed: ()=>Navigator.pop(c), child: Text('Cancel')),
-        ElevatedButton(onPressed: () async {
-          if(ctrl.text.isEmpty) return;
-          DateTime? d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
-          if(d==null) return;
-          TimeOfDay? t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: 6, minute: 0));
-          if(t==null) return;
-          DateTime finalDt = DateTime(d.year,d.month,d.day,t.hour,t.minute);
-          int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
-          setState(() { reminders.add({'id':id,'name':'$type: ${ctrl.text}','date':finalDt.toIso8601String()}); });
-          await saveReminders();
-          await scheduleNotif(id, '$type: ${ctrl.text}', finalDt);
-          Navigator.pop(c);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$type Reminder Set')));
-        }, child: Text('Set'))
-      ],
-    ));
+    await showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('$type का नाम'),
+        content: TextField(
+          controller: ctrl,
+          decoration: InputDecoration(hintText: 'जैसे: दादा जान का $type'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (ctrl.text.isEmpty) return;
+              DateTime? d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
+              if (d == null) return;
+              TimeOfDay? t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: 6, minute: 0));
+              if (t == null) return;
+              DateTime finalDt = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+              int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+              setState(() {
+                reminders.add({'id': id, 'name': '$type: ${ctrl.text}', 'date': finalDt.toIso8601String()});
+              });
+              await saveReminders();
+              await scheduleNotif(id, '$type: ${ctrl.text}', finalDt);
+              Navigator.pop(c);
+            },
+            child: Text('Set'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget rowItem(String n, String t) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(width: 80, child: Text(n, textAlign: TextAlign.right, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24)))),
+          SizedBox(width: 12),
+          Text(t, style: TextStyle(fontSize: 16, color: Color(0xFF0F4D24))),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     double sw = MediaQuery.of(context).size.width;
     double sh = MediaQuery.of(context).size.height;
-    String engDate = "${DateTime.now().day.toString().padLeft(2,'0')}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().year}";
-    
+    String engDate = "${DateTime.now().day.toString().padLeft(2, '0')}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}";
+
     return Scaffold(
       backgroundColor: Color(0xFFF2F7F2),
       body: SafeArea(
@@ -143,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     clipper: FullArchClipper(),
                     child: Container(
                       width: sw,
-                      height: sh * 0.82,
+                      height: sh * 0.85,
                       child: Column(
                         children: [
                           SizedBox(height: sh * 0.12),
@@ -157,17 +202,50 @@ class _HomeScreenState extends State<HomeScreen> {
                           SizedBox(height: 10),
                           Text("NAMAZ TIME RANGE", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))),
                           SizedBox(height: 20),
-                          _row("Fajr", "05:00 — 06:30"),
-                          _row("Zuhr", "12:30 — 15:15"),
-                          _row("Asr", "15:15 — 17:50"),
-                          _row("Maghrib", "18:35 — 19:40"),
-                          _row("Isha", "19:40 — 04:59"),
-                          if(reminders.isNotEmpty) ...[
-                            SizedBox(height: 12),
-                            Expanded(child: ListView.builder(itemCount: reminders.length, itemBuilder: (ctx,i){
-                              DateTime dt = DateTime.parse(reminders[i]['date']);
-                              return Padding(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 2), child: Text("${reminders[i]['name']} - ${dt.day}/${dt.month}", textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Color(0xFF0F4D24), fontWeight: FontWeight.bold)));
-                            }))
-                          ] else Spacer(),
+                          rowItem("Fajr", "05:00 - 06:30"),
+                          rowItem("Zuhr", "12:30 - 15:15"),
+                          rowItem("Asr", "15:15 - 17:50"),
+                          rowItem("Maghrib", "18:35 - 19:40"),
+                          rowItem("Isha", "19:40 - 04:59"),
+                          Spacer(),
                           Padding(
-                           
+                            padding: EdgeInsets.fromLTRB(12, 0, 12, 22),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 50,
+                                    child: ElevatedButton(
+                                      onPressed: () => addDialog('Fatiha'),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F4D24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                      child: Text("+ Add Fatiha", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 50,
+                                    child: ElevatedButton(
+                                      onPressed: () => addDialog('Urs'),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.white, side: BorderSide(color: Color(0xFF0F4D24), width: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                      child: Text("+ Add Urs", style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
