@@ -25,22 +25,18 @@ jobs:
           
       - name: Fix Android Folder
         run: |
+          echo "Backing up our files..."
+          cp lib/main.dart /tmp/main.dart.bak
+          cp pubspec.yaml /tmp/pubspec.yaml.bak
           if [ ! -f "android/build.gradle" ]; then
-            echo "Android folder incomplete, recreating..."
+            echo "Fixing android folder..."
             rm -rf android
             flutter create --project-name fatiha_urs_reminder . --platforms=android --org com.fatiha.urs
-            rm -f lib/main.dart
           fi
+          echo "Restoring our files..."
+          cp /tmp/main.dart.bak lib/main.dart
+          cp /tmp/pubspec.yaml.bak pubspec.yaml
           
-      - name: Restore Our Icon
-        run: |
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-          echo "Icons will be restored if exists in git"
-
       - name: Get Dependencies
         run: flutter pub get
         
