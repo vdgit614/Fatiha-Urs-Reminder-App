@@ -15,9 +15,20 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
-  const AndroidInitializationSettings initAndroid = AndroidInitializationSettings('@mipmap/launcher_icon');
-  const InitializationSettings initSettings = InitializationSettings(android: initAndroid);
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
+  try {
+    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+  } catch (_) {
+    tz.setLocalLocation(tz.getLocation('Asia/Karachi'));
+  }
+
+  try {
+    const AndroidInitializationSettings initAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initSettings = InitializationSettings(android: initAndroid);
+    await flutterLocalNotificationsPlugin.initialize(initSettings);
+  } catch (e) {
+    debugPrint('Notif init failed: $e');
+  }
+
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()));
 }
 
@@ -57,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> reminders = [];
   late HijriCalendar todayHijri;
   late PrayerTimes prayerTimes;
-  String adminPin = "78692"; // आपका PIN - Change कर सकते हो
+  String adminPin = "78692";
 
   @override
   void initState() {
@@ -69,10 +80,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> requestPerm() async {
-    await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+    try {
+      await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+    } catch (_) {}
   }
 
-  // 1. Islamic Date - Sunset + 15 min Logic - SAME LOOK
   HijriCalendar getTodayHijriWithSunset() {
     HijriCalendar hijri = HijriCalendar.now();
     final coords = Coordinates(23.0225, 72.5714);
@@ -84,11 +96,12 @@ class _HomeScreenState extends State<HomeScreen> {
       hijri.hDay += 1;
       if (hijri.hDay > 30) { hijri.hDay = 1; hijri.hMonth += 1; if (hijri.hMonth > 12) { hijri.hMonth = 1; hijri.hYear += 1; } }
     }
-    // Admin Override Check
     SharedPreferences.getInstance().then((prefs) {
       if (prefs.containsKey('admin_hijri')) {
-        var admin = json.decode(prefs.getString('admin_hijri')!);
-        setState(() { hijri.hDay = admin['day']; hijri.hMonth = admin['month']; hijri.hYear = admin['year']; });
+        try {
+          var admin = json.decode(prefs.getString('admin_hijri')!);
+          if (mounted) setState(() { hijri.hDay = admin['day']; hijri.hMonth = admin['month']; hijri.hYear = admin['year']; });
+        } catch (_) {}
       }
     });
     return hijri;
@@ -124,7 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) { return ""; }
   }
 
-  // 2. Add Dialog - Islamic First, Past Allow
   Future<void> addDialog(String type) async {
     TextEditingController nameCtrl = TextEditingController();
     int selHDay = todayHijri.hDay; int selHMonth = todayHijri.hMonth; int selHYear = todayHijri.hYear;
@@ -156,7 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Map<String,dynamic> newItem = {'id':id,'name':'$type: ${nameCtrl.text}','hDay':selHDay,'hMonth':selHMonth,'hYear':selHYear,'nextDate':nextG.toIso8601String()};
             setState(()=>reminders.add(newItem));
             await saveReminders();
-            await flutterLocalNotificationsPlugin.zonedSchedule(id, '$type Reminder', '${nameCtrl.text} की $type आज है', tz.TZDateTime.from(nextG, tz.local), const NotificationDetails(android: AndroidNotificationDetails('fatiha_urs','Fatiha Urs', importance: Importance.max, priority: Priority.high)), androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime);
+            try {
+              await flutterLocalNotificationsPlugin.zonedSchedule(id, '$type Reminder', '${nameCtrl.text} की $type आज है', tz.TZDateTime.from(nextG, tz.local), const NotificationDetails(android: AndroidNotificationDetails('fatiha_urs','Fatiha Urs', importance: Importance.max, priority: Priority.high)), androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime);
+            } catch (_) {}
             Navigator.pop(c);
           }, child: Text('Save', style: TextStyle(color: Colors.white))),
         ],
@@ -165,11 +179,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void deleteItem(int index) async {
-    await flutterLocalNotificationsPlugin.cancel(reminders[index]['id']);
+    try { await flutterLocalNotificationsPlugin.cancel(reminders[index]['id']); } catch (_) {}
     setState(()=>reminders.removeAt(index)); await saveReminders();
   }
 
-  // Share पूरी लिस्ट - एक बटन
   Future<void> shareFullList() async {
     if(reminders.isEmpty) return;
     String jsonStr = json.encode(reminders);
@@ -179,12 +192,10 @@ class _HomeScreenState extends State<HomeScreen> {
     await Share.shareXFiles([XFile(file.path)], text: 'मेरी Fatiha/Urs लिस्ट - Fatiha Urs App से शेयर की गई');
   }
 
-  // Import
   Future<void> importList(String jsonStr) async {
     try { List list = json.decode(jsonStr); setState(()=>reminders.addAll(List<Map<String,dynamic>>.from(list))); await saveReminders(); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${list.length} नाम Import हो गए!'))); } catch(e){}
   }
 
-  // Admin Panel - Long Press + PIN
   void openAdminCheck() {
     TextEditingController pinCtrl = TextEditingController();
     showDialog(context: context, builder: (c)=>AlertDialog(
@@ -193,9 +204,8 @@ class _HomeScreenState extends State<HomeScreen> {
       actions: [
         TextButton(onPressed: ()=>Navigator.pop(c), child: Text('Cancel')),
         ElevatedButton(onPressed: () async {
-          if(pinCtrl.text == adminPin) {
-            Navigator.pop(c); openAdminPanel();
-          } else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('गलत PIN'))); }
+          if(pinCtrl.text == adminPin) { Navigator.pop(c); openAdminPanel(); }
+          else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('गलत PIN'))); }
         }, child: Text('OK'))
       ],
     ));
@@ -234,7 +244,6 @@ class _HomeScreenState extends State<HomeScreen> {
     String islamicDateStr = "${todayHijri.hDay.toString().padLeft(2,'0')} - ${todayHijri.hMonth.toString().padLeft(2,'0')} - ${todayHijri.hYear}";
     String islamicMonthStr = hMonthsEng[todayHijri.hMonth];
     String engDate = "${DateTime.now().day.toString().padLeft(2,'0')}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().year}";
-    // Namaz Range from adhan
     String fajrRange = "${prayerTimes.fajr.hour.toString().padLeft(2,'0')}:${prayerTimes.fajr.minute.toString().padLeft(2,'0')} - ${prayerTimes.sunrise.hour.toString().padLeft(2,'0')}:${prayerTimes.sunrise.minute.toString().padLeft(2,'0')}";
     String zuhrRange = "${prayerTimes.dhuhr.hour.toString().padLeft(2,'0')}:${prayerTimes.dhuhr.minute.toString().padLeft(2,'0')} - ${prayerTimes.asr.hour.toString().padLeft(2,'0')}:${prayerTimes.asr.minute.toString().padLeft(2,'0')}";
     String asrRange = "${prayerTimes.asr.hour.toString().padLeft(2,'0')}:${prayerTimes.asr.minute.toString().padLeft(2,'0')} - ${prayerTimes.maghrib.hour.toString().padLeft(2,'0')}:${prayerTimes.maghrib.minute.toString().padLeft(2,'0')}";
@@ -278,7 +287,6 @@ class _HomeScreenState extends State<HomeScreen> {
           Text("List: ${reminders.length} नाम", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           Row(children: [
             IconButton(icon: Icon(Icons.upload_file, size: 18), onPressed: () async {
-              // Import logic - user will paste json
               TextEditingController c = TextEditingController();
               showDialog(context: context, builder: (ctx)=>AlertDialog(title: Text('Import JSON Paste करो'), content: TextField(controller: c, maxLines: 5), actions: [ElevatedButton(onPressed: (){ importList(c.text); Navigator.pop(ctx); }, child: Text('Import'))]));
             }),
