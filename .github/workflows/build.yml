@@ -7,37 +7,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.6'
+          flutter-version: '3.22.3'
           channel: stable
 
-      - name: Prepare assets
+      - name: Rebuild Android v2 embedding
         run: |
-          mkdir -p assets
-          touch assets/.keep
-
-      - name: Patch Android files (No Delete)
-        run: |
+          mkdir -p assets && touch assets/.keep
+          echo "Deleting old v1 android folder..."
+          rm -rf android
+          flutter create . --platforms=android --project-name fatiha_urs_reminder --org com.vdgit614.fatiha
+          
           python3 << 'PY'
           import pathlib, re, glob
-          # 1. Kotlin version in android/build.gradle
           p = pathlib.Path('android/build.gradle')
           if p.exists():
               t = p.read_text()
               t = re.sub(r"ext\.kotlin_version = '.*?'", "ext.kotlin_version = '1.9.22'", t)
               p.write_text(t)
-              print("Kotlin fixed")
-
-          # 2. app/build.gradle - BOM + exclude + lint
           p2 = pathlib.Path('android/app/build.gradle')
           if p2.exists():
               t = p2.read_text()
@@ -46,15 +38,10 @@ jobs:
               if 'checkReleaseBuilds' not in t:
                   t = t.replace('android {', "android {\n    lint {\n        checkReleaseBuilds false\n        abortOnError false\n    }")
               p2.write_text(t)
-              print("Duplicate + Lint fixed")
-
-          # 3. backup_rules
           for f in glob.glob('android/app/src/main/res/xml/*.xml'):
-              pp = pathlib.Path(f)
-              txt = pp.read_text()
-              txt = txt.replace('<exclude domain="external" path="." />', '')
-              pp.write_text(txt)
-          print("backup_rules fixed")
+              txt = pathlib.Path(f).read_text().replace('<exclude domain="external" path="." />', '')
+              pathlib.Path(f).write_text(txt)
+          print("All patched - v2 embedding ready")
           PY
 
       - name: Get Packages
