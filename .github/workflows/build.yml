@@ -20,54 +20,48 @@ jobs:
           flutter-version: '3.22.3'
           channel: stable
 
-      - name: Fix all build issues
+      - name: Prepare assets
         run: |
           mkdir -p assets
           touch assets/.keep
-          rm -rf android
-          flutter create . --platforms=android --project-name fatiha_urs_reminder --org com.vdgit614.fatiha
-          
-          # 1. Kotlin version fix
-          python3 -c "
-          import pathlib
+
+      - name: Patch Android files (No Delete)
+        run: |
+          python3 << 'PY'
+          import pathlib, re, glob
+          # 1. Kotlin version in android/build.gradle
           p = pathlib.Path('android/build.gradle')
-          t = p.read_text()
-          t = t.replace(\"ext.kotlin_version = '1.7.10'\", \"ext.kotlin_version = '1.9.22'\").replace(\"ext.kotlin_version = '1.9.10'\", \"ext.kotlin_version = '1.9.22'\")
-          import re
-          t = re.sub(r\"ext.kotlin_version = '.*?'\", \"ext.kotlin_version = '1.9.22'\", t)
-          p.write_text(t)
-          print('Kotlin fixed')
-          "
-          
-          # 2. Duplicate class + Lint fix together
-          python3 -c "
-          import pathlib
-          p = pathlib.Path('android/app/build.gradle')
-          t = p.read_text()
-          if 'kotlin-bom' not in t:
-              t = t.replace('dependencies {', \"configurations {\n    implementation {\n        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'\n        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'\n    }\n}\n\ndependencies {\n    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.22')\")
-          if 'checkReleaseBuilds' not in t:
-              t = t.replace('android {', \"android {\n    lint {\n        checkReleaseBuilds false\n        abortOnError false\n    }\")
-          p.write_text(t)
-          print('Duplicate + Lint fixed')
-          "
-          
-          # 3. backup_rules fix
-          python3 -c "
-          import pathlib, glob
-          for f in glob.glob('android/app/src/main/res/xml/*.xml'):
-              p = pathlib.Path(f)
+          if p.exists():
               t = p.read_text()
-              t = t.replace('<exclude domain=\"external\" path=\".\" />', '')
+              t = re.sub(r"ext\.kotlin_version = '.*?'", "ext.kotlin_version = '1.9.22'", t)
               p.write_text(t)
-          print('backup_rules fixed')
-          "
+              print("Kotlin fixed")
+
+          # 2. app/build.gradle - BOM + exclude + lint
+          p2 = pathlib.Path('android/app/build.gradle')
+          if p2.exists():
+              t = p2.read_text()
+              if 'kotlin-bom' not in t:
+                  t = t.replace('dependencies {', "configurations {\n    implementation {\n        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'\n        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'\n    }\n}\n\ndependencies {\n    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.22')")
+              if 'checkReleaseBuilds' not in t:
+                  t = t.replace('android {', "android {\n    lint {\n        checkReleaseBuilds false\n        abortOnError false\n    }")
+              p2.write_text(t)
+              print("Duplicate + Lint fixed")
+
+          # 3. backup_rules
+          for f in glob.glob('android/app/src/main/res/xml/*.xml'):
+              pp = pathlib.Path(f)
+              txt = pp.read_text()
+              txt = txt.replace('<exclude domain="external" path="." />', '')
+              pp.write_text(txt)
+          print("backup_rules fixed")
+          PY
 
       - name: Get Packages
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
