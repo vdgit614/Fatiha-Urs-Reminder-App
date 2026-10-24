@@ -22,7 +22,7 @@ void main() async {
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()));
 }
 
-// आपका Perfect Pointed Dome - NO CHANGE
+// Perfect Pointed Dome - NO CHANGE
 class DomeClipper extends CustomClipper<Path> {
   @override Path getClip(Size size) {
     Path path = Path();
@@ -62,17 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> saveData() async { 
     SharedPreferences prefs=await SharedPreferences.getInstance(); 
     prefs.setString('fatiha_list', json.encode(fatihaList));
-    // Google Drive Backup - Event पर
     backupToDrive();
   }
-  
-  // Google Drive Backup - Add/Delete पर ही
   Future<void> backupToDrive() async {
-    // TODO: Google Drive Upload Logic यहाँ आएगा
-    // जब List Change होगी तभी Call होगा
-    print("Backup to Drive - ${fatihaList.length} items");
+    print("Backup to Drive - ${fatihaList.length} items - Add/Delete पर");
   }
-
   int daysRemain(int tDay, int tMonth){ 
     int todayTotal=(todayHijri.hMonth-1)*30 + todayHijri.hDay; 
     int targetTotal=(tMonth-1)*30 + tDay; 
@@ -86,7 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Color(0xFF0F4D24); 
   }
 
-  // Share - JSON File
   Future<void> shareFullList() async {
     if(fatihaList.isEmpty){
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("List Empty")));
@@ -96,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/fatiha_backup.json');
       await file.writeAsString(json.encode(fatihaList));
-      await Share.shareXFiles([XFile(file.path)], text: "*MY FATIHA LIST* - इस File को Fatiha App से Open करो - Auto Import हो जायेगी");
+      await Share.shareXFiles([XFile(file.path)], text: "*MY FATIHA LIST* - इस File को Fatiha App से Open करो");
     }catch(e){
       String text="MY FATIHA LIST\n\n";
       for(var r in fatihaList){ text+="${r['name']} - ${r['iDay']} ${hMonths[r['iMonth']]}\n"; }
@@ -104,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Import - JSON File
   Future<void> importList() async {
     try{
       FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
@@ -184,7 +176,6 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Color(0xFFE8F5E9),
       body: Column(
         children: [
-          // DOME BOX - Pointed Dome Perfect - No Change
           Expanded(
             child: Container(
               width: double.infinity,
@@ -196,10 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.white,
                   child: Column(
                     children: [
-                      // बड़ा Spacer - Content को नीचे धकेलेगा - Dome नहीं हिलेगा
                       Spacer(flex: 3),
-                      
-                      // Month, Date, Namaz - अब नीचे
                       Text("JAMADIL AWAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))),
                       SizedBox(height: 12),
                       Text(islamicDateStr, style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF0F4D24))),
@@ -219,11 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text("Maghrib  18:07 - 19:23", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))),
                       SizedBox(height: 8),
                       Text("Isha  19:23 - 05:25", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))),
-                      
-                      // 5mm Gap - Info और Buttons के बीच - 19px = 5mm
                       SizedBox(height: 19),
-                      
-                      // Buttons - 5mm नीचे
                       Padding(
                         padding: EdgeInsets.fromLTRB(12,0,12,20),
                         child: Row(
@@ -240,7 +224,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // Toggle + Share + Import
           Container(
             color: Colors.white,
             margin: EdgeInsets.fromLTRB(8,0,8,0),
@@ -258,8 +241,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Row(
                   children: [
-                    IconButton(icon: Icon(Icons.download, color: Color(0xFF0F4D24), size: 20), onPressed: importList, tooltip: 'Import List'),
-                    IconButton(icon: Icon(Icons.share, color: Color(0xFF0F4D24), size: 20), onPressed: shareFullList, tooltip: 'Share List'),
+                    IconButton(icon: Icon(Icons.download, color: Color(0xFF0F4D24), size: 20), onPressed: importList),
+                    IconButton(icon: Icon(Icons.share, color: Color(0xFF0F4D24), size: 20), onPressed: shareFullList),
                   ],
                 ),
               ],
