@@ -22,7 +22,7 @@ void main() async {
   runApp(MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()));
 }
 
-// Perfect Pointed Dome - NO CHANGE
+// Perfect Pointed Dome - NO CHANGE - 0.25 + -10
 class DomeClipper extends CustomClipper<Path> {
   @override Path getClip(Size size) {
     Path path = Path();
@@ -40,7 +40,6 @@ class HomeScreen extends StatefulWidget { @override _HomeScreenState createState
 
 class _HomeScreenState extends State<HomeScreen> {
   late HijriCalendar todayHijri;
-  late PrayerTimes prayerTimes;
   List<Map<String,dynamic>> fatihaList=[];
   bool showFatihaList = false;
   List<String> hMonths=["", "MUHARRAM","SAFAR","RABI-UL-AWWAL","RABI-UL-AAKHAR","JAMADIL AWAL","JAMADIL AAKHAR","RAJJAB","SHABAN","RAMZAN","SHAWWAL","ZIL-QAD","ZIL-HAJJ"];
@@ -48,9 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override void initState(){
     super.initState();
     todayHijri=HijriCalendar.now(); todayHijri.hDay=todayHijri.hDay-1;
-    final coords=Coordinates(23.0225,72.5714);
-    final params=CalculationMethod.karachi.getParameters(); params.madhab=Madhab.hanafi;
-    prayerTimes=PrayerTimes.today(coords, params);
     loadData();
   }
   Future<void> loadData() async { 
@@ -65,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     backupToDrive();
   }
   Future<void> backupToDrive() async {
-    print("Backup to Drive - ${fatihaList.length} items - Add/Delete पर");
+    print("Backup to Drive on Add/Delete - ${fatihaList.length} items");
   }
   int daysRemain(int tDay, int tMonth){ 
     int todayTotal=(todayHijri.hMonth-1)*30 + todayHijri.hDay; 
@@ -81,15 +77,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> shareFullList() async {
-    if(fatihaList.isEmpty){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("List Empty")));
-      return;
-    }
+    if(fatihaList.isEmpty){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("List Empty"))); return; }
     try{
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/fatiha_backup.json');
       await file.writeAsString(json.encode(fatihaList));
-      await Share.shareXFiles([XFile(file.path)], text: "*MY FATIHA LIST* - इस File को Fatiha App से Open करो");
+      await Share.shareXFiles([XFile(file.path)], text: "*MY FATIHA LIST*");
     }catch(e){
       String text="MY FATIHA LIST\n\n";
       for(var r in fatihaList){ text+="${r['name']} - ${r['iDay']} ${hMonths[r['iMonth']]}\n"; }
@@ -119,15 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
     int selMonth=todayHijri.hMonth;
     await showDialog(
       context: context,
-      builder: (BuildContext ctx){
+      builder: (ctx){
         return StatefulBuilder(
-          builder: (BuildContext ctx2, StateSetter setD){
+          builder: (ctx2, setD){
             return AlertDialog(
               title: Text('ADD FATIHA', style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold, fontSize: 14)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'add name here', hintText: 'add name here', border: OutlineInputBorder())),
+                  TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'add name here', border: OutlineInputBorder())),
                   SizedBox(height: 12),
                   Row(
                     children: [
@@ -169,9 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override Widget build(BuildContext context){
-    String islamicDateStr="12 - 05 - 1448";
-    String engDate="24-10-2026";
-
     return Scaffold(
       backgroundColor: Color(0xFFE8F5E9),
       body: Column(
@@ -190,9 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Spacer(flex: 3),
                       Text("JAMADIL AWAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))),
                       SizedBox(height: 12),
-                      Text(islamicDateStr, style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF0F4D24))),
+                      Text("12 - 05 - 1448", style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF0F4D24))),
                       SizedBox(height: 10),
-                      Text("English Date: $engDate", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                      Text("English Date: 24-10-2026", style: TextStyle(fontSize: 14, color: Colors.grey)),
                       SizedBox(height: 12),
                       Container(height: 1, width: 280, color: Color(0xFF0F4D24)),
                       SizedBox(height: 16),
@@ -254,14 +244,14 @@ class _HomeScreenState extends State<HomeScreen> {
             child: showFatihaList ? Container(
               margin: EdgeInsets.fromLTRB(10,0,10,8),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Color(0xFF0F4D24))),
-              child: fatihaList.isEmpty ? Center(child: Text('Add Fatiha - add name here', style: TextStyle(fontSize: 12))) : ListView.builder(
+              child: fatihaList.isEmpty ? Center(child: Text('Add Fatiha - add name here')) : ListView.builder(
                 itemCount: fatihaList.length,
                 itemBuilder: (c,i){
                   var r=fatihaList[i];
                   int days=daysRemain(r['iDay'], r['iMonth']);
                   return ListTile(
                     dense: true,
-                    title: Text("${r['name']} - ${r['iDay'].toString().padLeft(2,'0')} ${hMonths[r['iMonth']]}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: getColor(days))),
+                    title: Text("${r['name']} - ${r['iDay']} ${hMonths[r['iMonth']]}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: getColor(days))),
                     subtitle: Text("-> $days days remain", style: TextStyle(fontSize: 11)),
                     trailing: IconButton(icon: Icon(Icons.delete, size: 18), onPressed: () async { setState(()=>fatihaList.removeAt(i)); await saveData(); }),
                   );
