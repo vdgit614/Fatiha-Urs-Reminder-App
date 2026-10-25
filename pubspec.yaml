@@ -1,9 +1,11 @@
 name: fatiha_reminder
-description: Fatiha Reminder App
+description: Fatiha Urs Reminder App
 publish_to: 'none'
 version: 1.0.0+1
+
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
+
 dependencies:
   flutter:
     sdk: flutter
@@ -16,8 +18,9 @@ dependencies:
   path_provider: ^2.1.1
   file_picker: ^6.1.1
   url_launcher: ^6.2.4
-    geolocator: 8.2.0
+  geolocator: 8.2.0
   geocoding: 2.0.5
   intl: ^0.19.0
+
 flutter:
   uses-material-design: true
