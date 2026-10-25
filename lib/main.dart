@@ -187,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('स्थान दर्ज करें', style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold, fontSize: 20)),
+            Text('Add location', style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold, fontSize: 20)),
             IconButton(onPressed: () => Navigator.pop(ctx), icon: Icon(Icons.close)),
           ],
         ),
@@ -212,25 +212,35 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context, cityVal, _) {
                   String displayCity = cityVal.isEmpty ? '___' : cityVal;
                   String copyText = 'मेरे शहर $displayCity का latitude longitude बताइए';
-                  return Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFDFF5E1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Color(0xFF0F4D24).withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(copyText, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF0F4D24)))),
-                        InkWell(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: copyText));
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copy हो गया! Google में Paste करो!')));
-                          },
-                          child: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.copy, color: Color(0xFF0F4D24))),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFDFF5E1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Color(0xFF0F4D24).withOpacity(0.3)),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(copyText, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF0F4D24)))),
+                            InkWell(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: copyText));
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copy हो गया! Google में Paste करो!')));
+                              },
+                              child: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)), child: Icon(Icons.copy, color: Color(0xFF0F4D24))),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'कॉपी करने के बाद अपने ब्राउज़र में जाकर सर्च करें और नीचे latitude और longitude सही से डालें',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700], fontStyle: FontStyle.italic),
+                      ),
+                    ],
                   );
                 },
               ),
