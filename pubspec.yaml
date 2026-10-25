@@ -20,5 +20,3 @@ dependencies:
   geocoding: ^2.1.1
 flutter:
   uses-material-design: true
-  geolocator: ^10.1.0
-  geocoding: ^2.1.1
