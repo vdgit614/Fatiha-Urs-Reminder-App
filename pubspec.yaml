@@ -16,7 +16,7 @@ dependencies:
   path_provider: ^2.1.1
   file_picker: ^6.1.1
   url_launcher: ^6.2.4
-  geolocator: ^9.0.2
-  geocoding: ^2.1.0
+  geolocator: 8.2.0
+  geocoding: 2.0.5
 flutter:
   uses-material-design: true
