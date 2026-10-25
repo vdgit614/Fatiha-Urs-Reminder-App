@@ -68,7 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String maghribRange="Locating...";
   String ishaRange="Locating...";
   String currentCity="Ahmedabad";
-    @override void initState(){
+
+  @override void initState(){
     super.initState();
     todayHijri=getIslamicDate();
     loadData();
@@ -190,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: Builder(builder: (ctx) => IconButton(icon: Icon(Icons.menu, color: Color(0xFF0F4D24), size: 28), onPressed: ()=>Scaffold.of(ctx).openDrawer()))),
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero, children: [
         DrawerHeader(decoration: BoxDecoration(color: Color(0xFF0F4D24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.mosque, color: Colors.white, size: 40), SizedBox(height: 10), Text('Fatiha Reminder', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Text(currentCity, style: TextStyle(color: Colors.white70, fontSize: 12))])),
-        ListTile(leading: Icon(Icons.my_location, color: Color(0xFF0F4D24)), title: Text('Refresh Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text(currentCity, style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); getUserLocationAndCalculate(); }),
+        ListTile(leading: Icon(Icons.my_location, color: Color(0xFF0F4D24)), title: Text('Refresh Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('Location se Namaz Time update', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); getUserLocationAndCalculate(); }),
         ListTile(leading: Icon(Icons.cloud_upload, color: Color(0xFF0F4D24)), title: Text('Backup to Google Drive', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('1 Click me Drive par save kare', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); backupToDrive(); }),
         ListTile(leading: Icon(Icons.cloud_download, color: Color(0xFF0F4D24)), title: Text('Restore from Drive', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('Backup file se wapas laye', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); restoreFromDrive(); }),
         Divider(),
@@ -202,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
             showDialog(context: context, builder: (c)=>AlertDialog(
               title: Text('About', style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold)),
               content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Fatiha Reminder App\nVersion 1.0\n\nLocation: $currentCity\n\nYe App Marhoomo ki Fatiha yaad dilane ke liye banayi gayi hai.\n\nAllah sab Marhoomo ki Maghfirat farmaye. Ameen.\n', style: TextStyle(fontSize: 13)),
+                Text('Fatiha Reminder App\nVersion 1.0\nLocation: $currentCity\n\nYe App Marhoomo ki Fatiha yaad dilane ke liye banayi gayi hai.\n\nAllah sab Marhoomo ki Maghfirat farmaye. Ameen.\n', style: TextStyle(fontSize: 13)),
                 Container(padding: EdgeInsets.all(10), decoration: BoxDecoration(color: Color(0xFFF2F7F2), borderRadius: BorderRadius.circular(8), border: Border.all(color: Color(0xFF0F4D24))), child: Row(children: [Icon(Icons.email, color: Color(0xFF0F4D24), size: 20), SizedBox(width: 8), Expanded(child: Text('appvd.83@gmail.com', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))))])),
                 SizedBox(height: 12),
                 SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F4D24)), icon: Icon(Icons.send, color: Colors.white, size: 16), label: Text('Email Us', style: TextStyle(color: Colors.white)), onPressed: () async { final Uri emailUri = Uri(scheme: 'mailto', path: 'appvd.83@gmail.com', query: 'subject=Fatiha App - Help&body=Assalamu Alaikum,'); if (await canLaunchUrl(emailUri)) { await launchUrl(emailUri); }})),
