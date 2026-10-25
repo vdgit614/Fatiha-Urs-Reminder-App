@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:adhan/adhan.dart';
 import 'package:intl/intl.dart';
 import 'package:hijri/hijri_calendar.dart';
-import 'package:flutter/services.dart'; // Copy के लिए जरूरी
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(FatihaReminderApp());
@@ -76,20 +76,16 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) throw Exception('GPS Off');
-
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) throw Exception('Denied');
       }
-
       Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       List<Placemark> marks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
       String city = marks.first.locality ?? marks.first.subAdministrativeArea ?? 'Current Location';
-      
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('use_manual', false);
-
       calculateNamazRanges(pos.latitude, pos.longitude, city);
     } catch (e) {
       calculateNamazRanges(22.1833, 73.4333, 'Dabhoi (Default)');
@@ -102,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final params = CalculationMethod.karachi.getParameters();
     params.madhab = Madhab.hanafi;
     final prayers = PrayerTimes.today(coords, params);
-
     setState(() {
       cityName = city;
       latitude = lat;
@@ -111,26 +106,20 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void loadData() {
-    // आपका पुराना Urs/Fatiha वाला Data Load करने का Code यहाँ रहेगा
-  }
+  void loadData() {}
 
-  // ===== आपका वाला Copy Box वाला Dialog =====
   Future<void> _showManualLocationDialog() async {
     final cityController = TextEditingController();
     final latController = TextEditingController();
     final lonController = TextEditingController();
     final prefs = await SharedPreferences.getInstance();
-
     cityController.text = prefs.getString('manual_city') ?? '';
     if (prefs.getDouble('manual_lat') != null) latController.text = prefs.getDouble('manual_lat').toString();
     if (prefs.getDouble('manual_lon') != null) lonController.text = prefs.getDouble('manual_lon').toString();
-
     ValueNotifier<String> cityNotifier = ValueNotifier(cityController.text);
     cityController.addListener(() {
       cityNotifier.value = cityController.text;
     });
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
