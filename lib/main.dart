@@ -76,24 +76,50 @@ class _HomeScreenState extends State<HomeScreen> {
     getUserLocationAndCalculate();
   }
 
-  Future<void> getUserLocationAndCalculate() async {
+  Future<void> getUserLocationAndCalculate({bool showLoading = false}) async {
+    if(showLoading){
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location le rahe hain... GPS ON rakho'), duration: Duration(seconds: 2)));
+    }
     try{
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if(!serviceEnabled){ calculateNamazRanges(23.0225, 72.5714, "Ahmedabad"); return; }
+      if(!serviceEnabled){
+        if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Service OFF hai! Settings me ON karo')));
+        calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+        return;
+      }
       LocationPermission permission = await Geolocator.checkPermission();
       if(permission == LocationPermission.denied){
         permission = await Geolocator.requestPermission();
-        if(permission == LocationPermission.denied){ calculateNamazRanges(23.0225, 72.5714, "Ahmedabad"); return; }
+        if(permission == LocationPermission.denied){
+          if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Permission Deny kiya! Allow karo')));
+          calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+          return;
+        }
       }
-      if(permission == LocationPermission.deniedForever){ calculateNamazRanges(23.0225, 72.5714, "Ahmedabad"); return; }
-      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low);
+      if(permission == LocationPermission.deniedForever){
+        if(showLoading){
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Permission permanently deny hai! App Settings me jake Allow karo'), duration: Duration(seconds: 4)));
+          await Geolocator.openAppSettings();
+        }
+        calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+        return;
+      }
+      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium).timeout(Duration(seconds: 15));
       String cityName = "Your Location";
       try{
         List<Placemark> placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
-        if(placemarks.isNotEmpty){ cityName = placemarks[0].locality ?? placemarks[0].subLocality ?? "Your Location"; }
-      }catch(e){}
+        if(placemarks.isNotEmpty){
+          cityName = placemarks[0].locality ?? placemarks[0].subLocality ?? placemarks[0].administrativeArea ?? "Your Location";
+        }
+      }catch(e){
+        cityName = "Lat ${pos.latitude.toStringAsFixed(2)}";
+      }
       calculateNamazRanges(pos.latitude, pos.longitude, cityName);
+      if(showLoading){
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Update: $cityName'), backgroundColor: Color(0xFF0F4D24)));
+      }
     }catch(e){
+      if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Error - Ahmedabad dikhaya')));
       calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
     }
   }
@@ -121,8 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }catch(e){}
   }
-
-  HijriCalendar getIslamicDate(){
+    HijriCalendar getIslamicDate(){
     HijriCalendar hijri=HijriCalendar.now(); hijri.hDay=hijri.hDay-1;
     try{
       final coords=Coordinates(23.0225,72.5714);
@@ -179,19 +204,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> importList() async {
     try{ FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']); if(result != null){ File file = File(result.files.single.path!); String content = await file.readAsString(); List data = json.decode(content); setState(()=>fatihaList = List<Map<String,dynamic>>.from(data)); await saveData(); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${data.length} Fatiha Import hui"))); } }catch(e){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Import Failed: $e"))); }
   }
-    Future<void> addFatihaDialog() async {
+
+  Future<void> addFatihaDialog() async {
     TextEditingController nameCtrl=TextEditingController(); int selDay=todayHijri.hDay; int selMonth=todayHijri.hMonth;
     await showDialog(context: context, builder: (ctx){ return StatefulBuilder(builder: (ctx2, setD){ return AlertDialog(title: Text('ADD FATIHA', style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold, fontSize: 14)), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'add name here', border: OutlineInputBorder())), SizedBox(height: 12), Row(children: [Expanded(child: DropdownButtonFormField<int>(value: selDay, decoration: InputDecoration(labelText: 'Day'), items: List.generate(30, (i)=>DropdownMenuItem(value: i+1, child: Text("${i+1}"))), onChanged: (v)=>setD(()=>selDay=v!))), SizedBox(width: 8), Expanded(flex: 2, child: DropdownButtonFormField<int>(value: selMonth, decoration: InputDecoration(labelText: 'Month'), items: List.generate(12, (i)=>DropdownMenuItem(value: i+1, child: Text(hMonths[i+1], style: TextStyle(fontSize: 10)))), onChanged: (v)=>setD(()=>selMonth=v!)))])]), actions: [TextButton(onPressed: ()=>Navigator.pop(ctx), child: Text('Cancel')), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F4D24)), onPressed: () async { if(nameCtrl.text.trim().isEmpty) return; int id=DateTime.now().millisecondsSinceEpoch.remainder(100000); Map<String,dynamic> item={'id':id, 'name':nameCtrl.text.trim(), 'iDay':selDay, 'iMonth':selMonth}; int remain=daysRemain(selDay, selMonth); for(int i=0;i<3;i++){ int off=[7,1,0][i]; if(remain>=off){ var when=tz.TZDateTime.now(tz.local).add(Duration(days: remain-off, hours: 8)); await flutterLocalNotificationsPlugin.zonedSchedule(id*10+i, item['name'] + " ki Fatiha", "${selDay} ${hMonths[selMonth]}", when, const NotificationDetails(android: AndroidNotificationDetails('fatiha_channel','Fatiha', importance: Importance.high)), androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle, uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime); } } setState(()=>fatihaList.add(item)); await saveData(); Navigator.pop(ctx); }, child: Text('Save', style: TextStyle(color: Colors.white)))], ); }); });
   }
-
-  @override Widget build(BuildContext context){
+    @override Widget build(BuildContext context){
     double sw = MediaQuery.of(context).size.width; double sh = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: Color(0xFFF2F7F2),
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: Builder(builder: (ctx) => IconButton(icon: Icon(Icons.menu, color: Color(0xFF0F4D24), size: 28), onPressed: ()=>Scaffold.of(ctx).openDrawer()))),
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero, children: [
         DrawerHeader(decoration: BoxDecoration(color: Color(0xFF0F4D24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.mosque, color: Colors.white, size: 40), SizedBox(height: 10), Text('Fatiha Reminder', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Text(currentCity, style: TextStyle(color: Colors.white70, fontSize: 12))])),
-        ListTile(leading: Icon(Icons.my_location, color: Color(0xFF0F4D24)), title: Text('Refresh Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('Location se Namaz Time update', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); getUserLocationAndCalculate(); }),
+        ListTile(leading: Icon(Icons.my_location, color: Color(0xFF0F4D24)), title: Text('Refresh Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('Location se Namaz Time update', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); getUserLocationAndCalculate(showLoading: true); }),
         ListTile(leading: Icon(Icons.cloud_upload, color: Color(0xFF0F4D24)), title: Text('Backup to Google Drive', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('1 Click me Drive par save kare', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); backupToDrive(); }),
         ListTile(leading: Icon(Icons.cloud_download, color: Color(0xFF0F4D24)), title: Text('Restore from Drive', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('Backup file se wapas laye', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); restoreFromDrive(); }),
         Divider(),
