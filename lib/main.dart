@@ -11,6 +11,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -60,17 +62,39 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String,dynamic>> fatihaList=[];
   bool showFatihaList = false;
   List<String> hMonths=["", "MUHARRAM","SAFAR","RABI-UL-AWWAL","RABI-UL-AAKHAR","JAMADIL AWAL","JAMADIL AAKHAR","RAJJAB","SHABAN","RAMZAN","SHAWWAL","ZIL-QAD","ZIL-HAJJ"];
-  String fajrRange="05:25 AM - 06:40 AM";
-  String zuhrRange="12:25 PM - 04:30 PM";
-  String asrRange="04:30 PM - 06:07 PM";
-  String maghribRange="06:07 PM - 07:23 PM";
-  String ishaRange="07:23 PM - 05:25 AM";
-
-  @override void initState(){
+  String fajrRange="Locating...";
+  String zuhrRange="Locating...";
+  String asrRange="Locating...";
+  String maghribRange="Locating...";
+  String ishaRange="Locating...";
+  String currentCity="Ahmedabad";
+    @override void initState(){
     super.initState();
     todayHijri=getIslamicDate();
-    calculateNamazRanges();
     loadData();
+    getUserLocationAndCalculate();
+  }
+
+  Future<void> getUserLocationAndCalculate() async {
+    try{
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if(!serviceEnabled){ calculateNamazRanges(23.0225, 72.5714, "Ahmedabad"); return; }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if(permission == LocationPermission.denied){
+        permission = await Geolocator.requestPermission();
+        if(permission == LocationPermission.denied){ calculateNamazRanges(23.0225, 72.5714, "Ahmedabad"); return; }
+      }
+      if(permission == LocationPermission.deniedForever){ calculateNamazRanges(23.0225, 72.5714, "Ahmedabad"); return; }
+      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low);
+      String cityName = "Your Location";
+      try{
+        List<Placemark> placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+        if(placemarks.isNotEmpty){ cityName = placemarks[0].locality ?? placemarks[0].subLocality ?? "Your Location"; }
+      }catch(e){}
+      calculateNamazRanges(pos.latitude, pos.longitude, cityName);
+    }catch(e){
+      calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+    }
   }
 
   String format12(DateTime dt){
@@ -80,13 +104,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return "$hour12:$m $ampm";
   }
 
-  void calculateNamazRanges(){
+  void calculateNamazRanges(double lat, double lon, String city){
     try{
-      final coords=Coordinates(23.0225,72.5714);
+      final coords=Coordinates(lat, lon);
       final params=CalculationMethod.karachi.getParameters();
       params.madhab=Madhab.hanafi;
       final prayerTimes=PrayerTimes.today(coords,params);
       setState((){
+        currentCity = city;
         fajrRange=format12(prayerTimes.fajr)+" - "+format12(prayerTimes.sunrise);
         zuhrRange=format12(prayerTimes.dhuhr)+" - "+format12(prayerTimes.asr);
         asrRange=format12(prayerTimes.asr)+" - "+format12(prayerTimes.maghrib);
@@ -119,20 +144,16 @@ class _HomeScreenState extends State<HomeScreen> {
   int daysRemain(int tDay, int tMonth){ int todayTotal=(todayHijri.hMonth-1)*30 + todayHijri.hDay; int targetTotal=(tMonth-1)*30 + tDay; int diff=targetTotal - todayTotal; if(diff<0) diff+=360; return diff; }
   Color getColor(int days){ if(days<=7) return Color(0xFFD32F2F); if(days<=60) return Color(0xFFE65100); return Color(0xFF0F4D24); }
 
-  // --- NEW 100% WORKING BACKUP ---
   Future<void> backupToDrive() async {
-    if(fatihaList.isEmpty){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("List Empty - Backup ki zarurat nahi"))); return; }
+    if(fatihaList.isEmpty){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("List Empty"))); return; }
     try{
       String jsonData = json.encode(fatihaList);
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/fatiha_backup.json');
       await file.writeAsString(jsonData);
-      // Share to Drive / WhatsApp / Anywhere
-      await Share.shareXFiles([XFile(file.path)], text: "MY FATIHA LIST BACKUP - ${fatihaList.length} Fatiha\nIsko Google Drive par save kar le");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Backup Ready - Google Drive select karo")));
-    }catch(e){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Backup Failed: $e")));
-    }
+      await Share.shareXFiles([XFile(file.path)], text: "MY FATIHA LIST BACKUP - ${fatihaList.length} Fatiha");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Backup Ready - Drive Select karo")));
+    }catch(e){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Backup Failed: $e"))); }
   }
 
   Future<void> restoreFromDrive() async {
@@ -146,9 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await saveData();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${data.length} Fatiha Restore Ho Gayi")));
       }
-    }catch(e){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restore Failed: $e")));
-    }
+    }catch(e){ ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Restore Failed: $e"))); }
   }
 
   Future<void> shareFullList() async {
@@ -170,7 +189,8 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Color(0xFFF2F7F2),
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: Builder(builder: (ctx) => IconButton(icon: Icon(Icons.menu, color: Color(0xFF0F4D24), size: 28), onPressed: ()=>Scaffold.of(ctx).openDrawer()))),
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero, children: [
-        DrawerHeader(decoration: BoxDecoration(color: Color(0xFF0F4D24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.mosque, color: Colors.white, size: 40), SizedBox(height: 10), Text('Fatiha Reminder', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Text('Islamic Calendar', style: TextStyle(color: Colors.white70, fontSize: 12))])),
+        DrawerHeader(decoration: BoxDecoration(color: Color(0xFF0F4D24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.mosque, color: Colors.white, size: 40), SizedBox(height: 10), Text('Fatiha Reminder', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Text(currentCity, style: TextStyle(color: Colors.white70, fontSize: 12))])),
+        ListTile(leading: Icon(Icons.my_location, color: Color(0xFF0F4D24)), title: Text('Refresh Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text(currentCity, style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); getUserLocationAndCalculate(); }),
         ListTile(leading: Icon(Icons.cloud_upload, color: Color(0xFF0F4D24)), title: Text('Backup to Google Drive', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('1 Click me Drive par save kare', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); backupToDrive(); }),
         ListTile(leading: Icon(Icons.cloud_download, color: Color(0xFF0F4D24)), title: Text('Restore from Drive', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), subtitle: Text('Backup file se wapas laye', style: TextStyle(fontSize: 11)), onTap: (){ Navigator.pop(context); restoreFromDrive(); }),
         Divider(),
@@ -182,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
             showDialog(context: context, builder: (c)=>AlertDialog(
               title: Text('About', style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold)),
               content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Fatiha Reminder App\nVersion 1.0\n\nYe App Marhoomo ki Fatiha yaad dilane ke liye banayi gayi hai.\n\nAllah sab Marhoomo ki Maghfirat farmaye. Ameen.\n', style: TextStyle(fontSize: 13)),
+                Text('Fatiha Reminder App\nVersion 1.0\n\nLocation: $currentCity\n\nYe App Marhoomo ki Fatiha yaad dilane ke liye banayi gayi hai.\n\nAllah sab Marhoomo ki Maghfirat farmaye. Ameen.\n', style: TextStyle(fontSize: 13)),
                 Container(padding: EdgeInsets.all(10), decoration: BoxDecoration(color: Color(0xFFF2F7F2), borderRadius: BorderRadius.circular(8), border: Border.all(color: Color(0xFF0F4D24))), child: Row(children: [Icon(Icons.email, color: Color(0xFF0F4D24), size: 20), SizedBox(width: 8), Expanded(child: Text('appvd.83@gmail.com', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))))])),
                 SizedBox(height: 12),
                 SizedBox(width: double.infinity, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F4D24)), icon: Icon(Icons.send, color: Colors.white, size: 16), label: Text('Email Us', style: TextStyle(color: Colors.white)), onPressed: () async { final Uri emailUri = Uri(scheme: 'mailto', path: 'appvd.83@gmail.com', query: 'subject=Fatiha App - Help&body=Assalamu Alaikum,'); if (await canLaunchUrl(emailUri)) { await launchUrl(emailUri); }})),
@@ -193,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ])),
       body: SafeArea(child: Padding(padding: EdgeInsets.all(8), child: Column(children: [
-        Expanded(child: CustomPaint(painter: FullArchPainter(), child: ClipPath(clipper: FullArchClipper(), child: Container(width: sw, height: sh * 0.82, child: Column(children: [SizedBox(height: sh * 0.08), Text(hMonths[todayHijri.hMonth], style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))), SizedBox(height: 14), Text("${todayHijri.hDay.toString().padLeft(2,'0')} - ${todayHijri.hMonth.toString().padLeft(2,'0')} - ${todayHijri.hYear}", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF0F4D24))), SizedBox(height: 12), Text("English Date: ${DateTime.now().day.toString().padLeft(2,'0')}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().year}", style: TextStyle(fontSize: 13, color: Colors.grey)), SizedBox(height: 10), Container(height: 1, width: 280, color: Color(0xFF0F4D24)), SizedBox(height: 10), Text("NAMAZ TIME RANGE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))), SizedBox(height: 18), Text("Fajr  $fajrRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Zuhr  $zuhrRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Asr  $asrRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Maghrib  $maghribRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Isha  $ishaRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), Spacer(), Padding(padding: EdgeInsets.fromLTRB(12, 0, 12, 22), child: Row(children: [Expanded(child: SizedBox(height: 50, child: ElevatedButton(onPressed: addFatihaDialog, style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F4D24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("+ Add Fatiha", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))), SizedBox(width: 10), Expanded(child: SizedBox(height: 50, child: ElevatedButton(onPressed: addFatihaDialog, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, side: BorderSide(color: Color(0xFF0F4D24), width: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("+ Add Urs", style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold))))), ])), ])), ))),
+        Expanded(child: CustomPaint(painter: FullArchPainter(), child: ClipPath(clipper: FullArchClipper(), child: Container(width: sw, height: sh * 0.82, child: Column(children: [SizedBox(height: sh * 0.08), Text(hMonths[todayHijri.hMonth], style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))), SizedBox(height: 14), Text("${todayHijri.hDay.toString().padLeft(2,'0')} - ${todayHijri.hMonth.toString().padLeft(2,'0')} - ${todayHijri.hYear}", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF0F4D24))), SizedBox(height: 6), Text(currentCity, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), Text("English Date: ${DateTime.now().day.toString().padLeft(2,'0')}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().year}", style: TextStyle(fontSize: 11, color: Colors.grey)), SizedBox(height: 8), Container(height: 1, width: 280, color: Color(0xFF0F4D24)), SizedBox(height: 10), Text("NAMAZ TIME RANGE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))), SizedBox(height: 18), Text("Fajr  $fajrRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Zuhr  $zuhrRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Asr  $asrRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Maghrib  $maghribRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), SizedBox(height: 8), Text("Isha  $ishaRange", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F4D24))), Spacer(), Padding(padding: EdgeInsets.fromLTRB(12, 0, 12, 22), child: Row(children: [Expanded(child: SizedBox(height: 50, child: ElevatedButton(onPressed: addFatihaDialog, style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F4D24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("+ Add Fatiha", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))), SizedBox(width: 10), Expanded(child: SizedBox(height: 50, child: ElevatedButton(onPressed: addFatihaDialog, style: ElevatedButton.styleFrom(backgroundColor: Colors.white, side: BorderSide(color: Color(0xFF0F4D24), width: 2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text("+ Add Urs", style: TextStyle(color: Color(0xFF0F4D24), fontWeight: FontWeight.bold))))), ])), ])), ))),
         Container(color: Colors.white, margin: EdgeInsets.fromLTRB(0,8,0,0), padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [Text('MY FATIHA LIST (${fatihaList.length})', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F4D24), fontSize: 11)), SizedBox(width: 6), Switch(value: showFatihaList, activeColor: Color(0xFF0F4D24), onChanged: (v){ setState(()=>showFatihaList=v); }), Text(showFatihaList ? 'ON' : 'OFF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: showFatihaList ? Color(0xFF0F4D24) : Colors.grey))]), Row(children: [IconButton(icon: Icon(Icons.download, color: Color(0xFF0F4D24), size: 20), onPressed: importList), IconButton(icon: Icon(Icons.share, color: Color(0xFF0F4D24), size: 20), onPressed: shareFullList)])])),
         AnimatedContainer(duration: Duration(milliseconds: 300), height: showFatihaList ? 300 : 0, child: showFatihaList ? Container(margin: EdgeInsets.fromLTRB(0,0,0,0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Color(0xFF0F4D24))), child: fatihaList.isEmpty ? Center(child: Text('No Fatiha')) : ListView.builder(itemCount: fatihaList.length, itemBuilder: (c,i){ var r=fatihaList[i]; int days=daysRemain(r['iDay'], r['iMonth']); return ListTile(dense: true, title: Text("${r['name']} - ${r['iDay']} ${hMonths[r['iMonth']]}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: getColor(days))), subtitle: Text("-> $days days remain", style: TextStyle(fontSize: 11)), trailing: IconButton(icon: Icon(Icons.delete, size: 18), onPressed: () async { setState(()=>fatihaList.removeAt(i)); await saveData(); })); })) : SizedBox.shrink()),
       ]))),
