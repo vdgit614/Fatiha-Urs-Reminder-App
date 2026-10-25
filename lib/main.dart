@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String asrRange="Locating...";
   String maghribRange="Locating...";
   String ishaRange="Locating...";
-  String currentCity="Ahmedabad";
+  String currentCity="Dabhoi";
 
   @override void initState(){
     super.initState();
@@ -78,33 +78,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> getUserLocationAndCalculate({bool showLoading = false}) async {
     if(showLoading){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location le rahe hain... GPS ON rakho'), duration: Duration(seconds: 2)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location le rahe hain... 30 sec lagega, khule me jao')));
     }
     try{
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if(!serviceEnabled){
         if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Service OFF hai! Settings me ON karo')));
-        calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+        calculateNamazRanges(22.1833, 73.4333, "Dabhoi");
         return;
       }
       LocationPermission permission = await Geolocator.checkPermission();
       if(permission == LocationPermission.denied){
         permission = await Geolocator.requestPermission();
         if(permission == LocationPermission.denied){
-          if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Permission Deny kiya! Allow karo')));
-          calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+          if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Permission Deny! Allow karo')));
+          calculateNamazRanges(22.1833, 73.4333, "Dabhoi");
           return;
         }
       }
       if(permission == LocationPermission.deniedForever){
         if(showLoading){
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Permission permanently deny hai! App Settings me jake Allow karo'), duration: Duration(seconds: 4)));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Permanently Deny! Settings me Allow karo'), duration: Duration(seconds: 4)));
           await Geolocator.openAppSettings();
         }
-        calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+        calculateNamazRanges(22.1833, 73.4333, "Dabhoi");
         return;
       }
-      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium).timeout(Duration(seconds: 15));
+      Position? pos;
+      try{ pos = await Geolocator.getLastKnownPosition(); }catch(e){}
+      if(pos == null){
+        try{
+          pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 30));
+        }catch(e){
+          pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.lowest, timeLimit: Duration(seconds: 30));
+        }
+      }
+      if(pos == null) throw Exception("GPS Fix nahi mila");
       String cityName = "Your Location";
       try{
         List<Placemark> placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
@@ -112,15 +121,15 @@ class _HomeScreenState extends State<HomeScreen> {
           cityName = placemarks[0].locality ?? placemarks[0].subLocality ?? placemarks[0].administrativeArea ?? "Your Location";
         }
       }catch(e){
-        cityName = "Lat ${pos.latitude.toStringAsFixed(2)}";
+        cityName = "${pos.latitude.toStringAsFixed(2)}, ${pos.longitude.toStringAsFixed(2)}";
       }
       calculateNamazRanges(pos.latitude, pos.longitude, cityName);
       if(showLoading){
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Update: $cityName'), backgroundColor: Color(0xFF0F4D24)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Update: $cityName'), backgroundColor: Color(0xFF0F4D24), duration: Duration(seconds: 4)));
       }
     }catch(e){
-      if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location Error - Ahmedabad dikhaya')));
-      calculateNamazRanges(23.0225, 72.5714, "Ahmedabad");
+      if(showLoading) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e - Dabhoi dikhaya'), duration: Duration(seconds: 4)));
+      calculateNamazRanges(22.1833, 73.4333, "Dabhoi");
     }
   }
 
@@ -147,10 +156,28 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }catch(e){}
   }
+
+  HijriCalendar getIslamicDate(){
+    HijriCalendar hijri=HijriCalendar.now(); hijri.hDay=hijri.hDay-1;
+    try{
+      final coords=Coordinates(22.1833,73.4333);
+      final params=CalculationMethod.karachi.getParameters(); params.madhab=Madhab.hanafi;
+      final prayerTimes=PrayerTimes.today(coords,params);
+      final maghrib=prayerTimes.maghrib;
+      if(maghrib!=null){
+        final changeTime=maghrib.add(Duration(minutes:15));
+        if(DateTime.now().isAfter(changeTime)){
+          int day=hijri.hDay+1; int month=hijri.hMonth; int year=hijri.hYear;
+          if(day>30){ day=1; month++; if(month>12){ month=1; year++; } }
+          hijri.hDay=day; hijri.hMonth=month; hijri.hYear=year;
+        }
+      }
+    }catch(e){} return hijri;
+  }
     HijriCalendar getIslamicDate(){
     HijriCalendar hijri=HijriCalendar.now(); hijri.hDay=hijri.hDay-1;
     try{
-      final coords=Coordinates(23.0225,72.5714);
+      final coords=Coordinates(22.1833,73.4333);
       final params=CalculationMethod.karachi.getParameters(); params.madhab=Madhab.hanafi;
       final prayerTimes=PrayerTimes.today(coords,params);
       final maghrib=prayerTimes.maghrib;
@@ -246,3 +273,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+  
