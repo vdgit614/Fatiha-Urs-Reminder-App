@@ -174,25 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }catch(e){} return hijri;
   }
-    HijriCalendar getIslamicDate(){
-    HijriCalendar hijri=HijriCalendar.now(); hijri.hDay=hijri.hDay-1;
-    try{
-      final coords=Coordinates(22.1833,73.4333);
-      final params=CalculationMethod.karachi.getParameters(); params.madhab=Madhab.hanafi;
-      final prayerTimes=PrayerTimes.today(coords,params);
-      final maghrib=prayerTimes.maghrib;
-      if(maghrib!=null){
-        final changeTime=maghrib.add(Duration(minutes:15));
-        if(DateTime.now().isAfter(changeTime)){
-          int day=hijri.hDay+1; int month=hijri.hMonth; int year=hijri.hYear;
-          if(day>30){ day=1; month++; if(month>12){ month=1; year++; } }
-          hijri.hDay=day; hijri.hMonth=month; hijri.hYear=year;
-        }
-      }
-    }catch(e){} return hijri;
-  }
-
-  Future<void> loadData() async { SharedPreferences prefs=await SharedPreferences.getInstance(); if(prefs.containsKey('fatiha_list')){ setState(()=>fatihaList=List<Map<String,dynamic>>.from(json.decode(prefs.getString('fatiha_list')!))); } }
+    Future<void> loadData() async { SharedPreferences prefs=await SharedPreferences.getInstance(); if(prefs.containsKey('fatiha_list')){ setState(()=>fatihaList=List<Map<String,dynamic>>.from(json.decode(prefs.getString('fatiha_list')!))); } }
   Future<void> saveData() async { SharedPreferences prefs=await SharedPreferences.getInstance(); prefs.setString('fatiha_list', json.encode(fatihaList)); }
   int daysRemain(int tDay, int tMonth){ int todayTotal=(todayHijri.hMonth-1)*30 + todayHijri.hDay; int targetTotal=(tMonth-1)*30 + tDay; int diff=targetTotal - todayTotal; if(diff<0) diff+=360; return diff; }
   Color getColor(int days){ if(days<=7) return Color(0xFFD32F2F); if(days<=60) return Color(0xFFE65100); return Color(0xFF0F4D24); }
@@ -273,4 +255,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-  
