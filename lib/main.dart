@@ -31,9 +31,10 @@ class FullArchClipper extends CustomClipper<Path> {
     double w = size.width; double h = size.height;
     Path path = Path();
     path.moveTo(w/2,0);
-    path.cubicTo(w*0.65,h*0.08,w,h*0.18,w,h*0.30);
-    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.30);
-    path.cubicTo(0,h*0.18,w*0.35,h*0.08,w/2,0);
+    // Vertical lines extended upwards, Dome shifted up
+    path.cubicTo(w*0.65,h*0.05,w,h*0.12,w,h*0.20);
+    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.20);
+    path.cubicTo(0,h*0.12,w*0.35,h*0.05,w/2,0);
     path.close(); return path;
   }
   @override bool shouldReclip(covariant CustomClipper<Path> old) => false;
@@ -44,9 +45,9 @@ class FullArchPainter extends CustomPainter {
     double w = size.width; double h = size.height;
     Path path = Path();
     path.moveTo(w/2,0);
-    path.cubicTo(w*0.65,h*0.08,w,h*0.18,w,h*0.30);
-    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.30);
-    path.cubicTo(0,h*0.18,w*0.35,h*0.08,w/2,0);
+    path.cubicTo(w*0.65,h*0.05,w,h*0.12,w,h*0.20);
+    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.20);
+    path.cubicTo(0,h*0.12,w*0.35,h*0.05,w/2,0);
     path.close();
     canvas.drawShadow(path, Colors.black26, 10, true);
     Paint fill = Paint()..color = Colors.white..style = PaintingStyle.fill;
@@ -415,3 +416,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
