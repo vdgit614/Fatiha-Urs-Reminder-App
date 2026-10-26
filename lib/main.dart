@@ -31,10 +31,10 @@ class FullArchClipper extends CustomClipper<Path> {
     double w = size.width; double h = size.height;
     Path path = Path();
     path.moveTo(w/2,0);
-    // Vertical lines extended upwards, Dome shifted up
-    path.cubicTo(w*0.65,h*0.05,w,h*0.12,w,h*0.20);
-    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.20);
-    path.cubicTo(0,h*0.12,w*0.35,h*0.05,w/2,0);
+    // यहाँ कर्व के पॉइंट्स को पुराने शेप में ही रखा गया है, बस ऊंचाई को एडजस्ट किया है
+    path.cubicTo(w*0.65, h*0.075, w, h*0.168, w, h*0.28);
+    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.28);
+    path.cubicTo(0, h*0.168, w*0.35, h*0.075, w/2, 0);
     path.close(); return path;
   }
   @override bool shouldReclip(covariant CustomClipper<Path> old) => false;
@@ -45,9 +45,9 @@ class FullArchPainter extends CustomPainter {
     double w = size.width; double h = size.height;
     Path path = Path();
     path.moveTo(w/2,0);
-    path.cubicTo(w*0.65,h*0.05,w,h*0.12,w,h*0.20);
-    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.20);
-    path.cubicTo(0,h*0.12,w*0.35,h*0.05,w/2,0);
+    path.cubicTo(w*0.65, h*0.075, w, h*0.168, w, h*0.28);
+    path.lineTo(w,h); path.lineTo(0,h); path.lineTo(0,h*0.28);
+    path.cubicTo(0, h*0.168, w*0.35, h*0.075, w/2, 0);
     path.close();
     canvas.drawShadow(path, Colors.black26, 10, true);
     Paint fill = Paint()..color = Colors.white..style = PaintingStyle.fill;
@@ -337,6 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
     @override Widget build(BuildContext context){
     double sw = MediaQuery.of(context).size.width; double sh = MediaQuery.of(context).size.height;
     return Scaffold(
+      extendBodyBehindAppBar: true, // नया कोड: यह डोम को ऊपर मेनू बार के पीछे तक खिसका देगा
       backgroundColor: Color(0xFFF2F7F2),
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: Builder(builder: (ctx) => IconButton(icon: Icon(Icons.menu, color: Color(0xFF0F4D24), size: 28), onPressed: ()=>Scaffold.of(ctx).openDrawer()))),
       drawer: Drawer(child: ListView(padding: EdgeInsets.zero, children: [
@@ -383,8 +384,8 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ])),
-      body: SafeArea(child: Padding(padding: EdgeInsets.all(8), child: Column(children: [
-        Expanded(child: CustomPaint(painter: FullArchPainter(), child: ClipPath(clipper: FullArchClipper(), child: Container(width: sw, height: sh * 0.82, child: Column(children: [
+      body: SafeArea(child: Padding(padding: EdgeInsets.fromLTRB(8, 2, 8, 8), child: Column(children: [
+        Expanded(child: CustomPaint(painter: FullArchPainter(), child: ClipPath(clipper: FullArchClipper(), child: Container(width: sw, height: sh * 0.88, child: Column(children: [
           SizedBox(height: sh * 0.08), 
           Text(hMonths[todayHijri.hMonth], style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F4D24))), 
           SizedBox(height: 14), 
@@ -416,4 +417,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
